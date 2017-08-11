@@ -3,68 +3,99 @@ using System.Collections.Concurrent;
 using System.Text;
 using Loki.Interfaces.Connections;
 using Loki.Interfaces.Dependency;
+using Loki.SignalServer.Contrib.DirectMessaging.Queues;
 using Loki.SignalServer.Extensions;
 using Loki.SignalServer.Interfaces.Router;
 
 namespace Loki.SignalServer.Contrib.DirectMessaging
 {
-    public class WrappedConcurrentQueue<T>
-    {
-        private readonly ConcurrentQueue<T> _queue = new ConcurrentQueue<T>();
-
-        public event EventHandler Changed;
-
-        public void Enqueue(T item)
-        {
-            _queue.Enqueue(item);
-
-            Changed?.Invoke(this, EventArgs.Empty);
-        }
-
-        public T Dequeue()
-        {
-            _queue.TryDequeue(out T result);
-            return result;
-        }
-    }
-
     public class DirectMessagingExtension : Extension
     {
-        private IWebSocketConnectionManager _connections;
-        private readonly ConcurrentDictionary<string, WrappedConcurrentQueue<ISignal>>_signalQueues = new ConcurrentDictionary<string, WrappedConcurrentQueue<ISignal>>();
+        #region Readonly Variables
 
+        /// <summary>
+        /// The connections
+        /// </summary>
+        private IWebSocketConnectionManager _connections;
+
+        /// <summary>
+        /// The signal queues
+        /// </summary>
+        private readonly ConcurrentDictionary<string, EventedConcurrentQueue<ISignal>>_signalQueues = new ConcurrentDictionary<string, EventedConcurrentQueue<ISignal>>();
+
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DirectMessagingExtension"/> class.
+        /// </summary>
+        /// <param name="extensionName">Name of the extension.</param>
+        /// <param name="dependencyUtility">The dependency utility.</param>
         public DirectMessagingExtension(string extensionName, IDependencyUtility dependencyUtility) : base(extensionName, dependencyUtility)
         {
             this.RegisterAction("SendMessage", SendMessage);
         }
 
+        #endregion
+
+        #region Actions
+
+        /// <summary>
+        /// Sends the message.
+        /// </summary>
+        /// <param name="signal">The signal.</param>
+        /// <returns></returns>
         private ISignal SendMessage(ISignal signal)
         {
             if (!_signalQueues.ContainsKey(signal.Recipient))
-                _signalQueues[signal.Recipient] = new WrappedConcurrentQueue<ISignal>();
+                _signalQueues[signal.Recipient] = new EventedConcurrentQueue<ISignal>();
 
             _signalQueues[signal.Recipient].Enqueue(signal);
 
             return null;
         }
 
+        #endregion
+
+        #region Overrides
+
+        /// <summary>
+        /// Registers the connection.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
         public override void RegisterConnection(IWebSocketConnection connection)
         {
-            string id = $"{connection.ClientIdentifier}";
+            if (!_signalQueues.ContainsKey(connection.UniqueClientIdentifier))
+                _signalQueues[connection.UniqueClientIdentifier] = new EventedConcurrentQueue<ISignal>();
 
-            if (!_signalQueues.ContainsKey(id))
-                _signalQueues[id] = new WrappedConcurrentQueue<ISignal>();
-
-            _signalQueues[id].Changed += OnEnqueue;
+            _signalQueues[connection.UniqueClientIdentifier].Changed += OnEnqueue;
         }
 
+        /// <summary>
+        /// Unregisters the connection.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
         public override void UnregisterConnection(IWebSocketConnection connection)
         {
+            if (!_signalQueues.ContainsKey(connection.UniqueClientIdentifier))
+                return;
+
+            _signalQueues.TryRemove(connection.UniqueClientIdentifier, out _);
         }
 
+        #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Called when [enqueue].
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="eventArgs">The <see cref="EventArgs"/> instance containing the event data.</param>
         private void OnEnqueue(object sender, EventArgs eventArgs)
         {
-            ISignal signal = ((WrappedConcurrentQueue<ISignal>) sender).Dequeue();
+            ISignal signal = ((EventedConcurrentQueue<ISignal>) sender).Dequeue();
             if (signal == null)
                 return;
 
@@ -79,5 +110,7 @@ namespace Loki.SignalServer.Contrib.DirectMessaging
                 connection.SendText(text);
             }
         }
+
+        #endregion
     }
 }
