@@ -1,16 +1,21 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Text;
 using Loki.Interfaces.Connections;
 using Loki.Interfaces.Dependency;
-using Loki.SignalServer.Contrib.DirectMessaging.Queues;
 using Loki.SignalServer.Extensions;
+using Loki.SignalServer.Interfaces.Queues;
 using Loki.SignalServer.Interfaces.Router;
 
 namespace Loki.SignalServer.Contrib.DirectMessaging
 {
     public class DirectMessagingExtension : Extension
     {
+        #region Constants
+
+        private const string QUEUE_EXCHANGE_ID = "directmessaging";
+
+        #endregion
+
         #region Readonly Variables
 
         /// <summary>
@@ -19,9 +24,9 @@ namespace Loki.SignalServer.Contrib.DirectMessaging
         private IWebSocketConnectionManager _connections;
 
         /// <summary>
-        /// The signal queues
+        /// The queue handler
         /// </summary>
-        private readonly ConcurrentDictionary<string, EventedConcurrentQueue<ISignal>>_signalQueues = new ConcurrentDictionary<string, EventedConcurrentQueue<ISignal>>();
+        private readonly IEventedQueueHandler<ISignal> _queueHandler;
 
         #endregion
 
@@ -35,6 +40,9 @@ namespace Loki.SignalServer.Contrib.DirectMessaging
         public DirectMessagingExtension(string extensionName, IDependencyUtility dependencyUtility) : base(extensionName, dependencyUtility)
         {
             this.RegisterAction("SendMessage", SendMessage);
+
+            _connections = dependencyUtility.Resolve<IWebSocketConnectionManager>();
+            _queueHandler = dependencyUtility.Resolve<IEventedQueueHandler<ISignal>>();
         }
 
         #endregion
@@ -48,10 +56,7 @@ namespace Loki.SignalServer.Contrib.DirectMessaging
         /// <returns></returns>
         private ISignal SendMessage(ISignal signal)
         {
-            if (!_signalQueues.ContainsKey(signal.Recipient))
-                _signalQueues[signal.Recipient] = new EventedConcurrentQueue<ISignal>();
-
-            _signalQueues[signal.Recipient].Enqueue(signal);
+            _queueHandler.Enqueue(QUEUE_EXCHANGE_ID, signal.Recipient, signal);
 
             return null;
         }
@@ -66,10 +71,11 @@ namespace Loki.SignalServer.Contrib.DirectMessaging
         /// <param name="connection">The connection.</param>
         public override void RegisterConnection(IWebSocketConnection connection)
         {
-            if (!_signalQueues.ContainsKey(connection.UniqueClientIdentifier))
-                _signalQueues[connection.UniqueClientIdentifier] = new EventedConcurrentQueue<ISignal>();
+            if (_connections == null)
+                _connections = DependencyUtility.Resolve<IWebSocketConnectionManager>();
 
-            _signalQueues[connection.UniqueClientIdentifier].Changed += OnEnqueue;
+            _queueHandler.CreateQueue(QUEUE_EXCHANGE_ID, connection.ClientIdentifier);
+            _queueHandler.AddEvent(QUEUE_EXCHANGE_ID, connection.ClientIdentifier, OnDequeue);
         }
 
         /// <summary>
@@ -78,29 +84,23 @@ namespace Loki.SignalServer.Contrib.DirectMessaging
         /// <param name="connection">The connection.</param>
         public override void UnregisterConnection(IWebSocketConnection connection)
         {
-            if (!_signalQueues.ContainsKey(connection.UniqueClientIdentifier))
-                return;
-
-            _signalQueues.TryRemove(connection.UniqueClientIdentifier, out _);
+            _queueHandler.RemoveEvent(QUEUE_EXCHANGE_ID, connection.ClientIdentifier, OnDequeue);
+            _queueHandler.RemoveQueue(QUEUE_EXCHANGE_ID, connection.ClientIdentifier);
         }
 
         #endregion
 
         #region Helper Methods
-
+        
         /// <summary>
-        /// Called when [enqueue].
+        /// Called when [dequeue].
         /// </summary>
         /// <param name="sender">The sender.</param>
-        /// <param name="eventArgs">The <see cref="EventArgs"/> instance containing the event data.</param>
-        private void OnEnqueue(object sender, EventArgs eventArgs)
+        /// <param name="signal">The signal1.</param>
+        private void OnDequeue(object sender, ISignal signal)
         {
-            ISignal signal = ((EventedConcurrentQueue<ISignal>) sender).Dequeue();
             if (signal == null)
                 return;
-
-            if (_connections == null)
-                _connections = DependencyUtility.Resolve<IWebSocketConnectionManager>();
 
             IWebSocketConnection[] connections = _connections.GetConnectionsByClientIdentifier(signal.Recipient);
             foreach (IWebSocketConnection connection in connections)
