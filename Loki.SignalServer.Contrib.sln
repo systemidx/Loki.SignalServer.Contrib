@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26430.16
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Loki.SignalServer.Contrib.DirectMessaging", "Loki.SignalServer.Contrib\Loki.SignalServer.Contrib.DirectMessaging.csproj", "{CF818854-0BE2-4DAF-B319-2FCF5B0DECFC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Loki.SignalServer.Contrib.DirectMessaging", "Loki.SignalServer.Contrib.DirectMessaging\Loki.SignalServer.Contrib.DirectMessaging.csproj", "{CF818854-0BE2-4DAF-B319-2FCF5B0DECFC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
