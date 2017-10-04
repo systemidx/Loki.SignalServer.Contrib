@@ -107,7 +107,7 @@ namespace Loki.SignalServer.Contrib.Messaging.Handlers
 
         public bool JoinRoom(Guid roomId, string entityId)
         {
-            IEventedQueue<ISignal> queue = _queueCache.Get<IEventedQueue<ISignal>>(roomId.ToString()) ?? GenerateRoomQueueAndExchange(roomId);
+            IEventedQueue<ISignal> queue = _queueCache.Get<IEventedQueue<ISignal>>(roomId.ToString()) ?? GenerateRoomQueueAndExchange(entityId, roomId);
             queue.Dequeued += (sender, signal) =>
             {
                 _router.BroadcastSignal(entityId, signal);
@@ -119,7 +119,7 @@ namespace Loki.SignalServer.Contrib.Messaging.Handlers
 
         public void LeaveRoom(Guid roomId, string entityId)
         {
-            IEventedQueue<ISignal> queue = _queueCache.Get<IEventedQueue<ISignal>>(roomId.ToString()) ?? GenerateRoomQueueAndExchange(roomId);
+            IEventedQueue<ISignal> queue = _queueCache.Get<IEventedQueue<ISignal>>(roomId.ToString()) ?? GenerateRoomQueueAndExchange(entityId, roomId);
             
             //LeaveRoomFromCache(roomId, entityId);
             //LeaveRoomFromDatabase(roomId, entityId);
@@ -131,7 +131,7 @@ namespace Loki.SignalServer.Contrib.Messaging.Handlers
             message.Timestamp = DateTime.UtcNow;
             message.Sender = signal.Sender;
 
-            IEventedQueue<ISignal> queue = _queueCache.Get<IEventedQueue<ISignal>>(message.RoomId.ToString()) ?? GenerateRoomQueueAndExchange(message.RoomId);
+            IEventedQueue<ISignal> queue = _queueCache.Get<IEventedQueue<ISignal>>(message.RoomId.ToString()) ?? GenerateRoomQueueAndExchange(signal.Sender, message.RoomId);
             queue.Enqueue(signal);
 
             ////Get Room Attendees
@@ -143,10 +143,10 @@ namespace Loki.SignalServer.Contrib.Messaging.Handlers
             //_router.BroadcastSignal(entities, signal);
         }
 
-        public List<string> GetActiveRoomEntities(Guid roomId)
-        {
-            return GetActiveRoomEntitiesFromCache(roomId) ?? GetActiveRoomEntitiesFromDatabase(roomId);
-        }
+        //public List<string> GetActiveRoomEntities(Guid roomId)
+        //{
+        //    return GetActiveRoomEntitiesFromCache(roomId) ?? GetActiveRoomEntitiesFromDatabase(roomId);
+        //}
 
         #region Data Access
 
@@ -165,25 +165,25 @@ namespace Loki.SignalServer.Contrib.Messaging.Handlers
             }
         }
 
-        private bool JoinRoomFromCache(Guid roomId, string entityId)
-        {
-            string key = roomId.ToString();
-            List<string> entities = _attendeeCache.Get<List<string>>(key) ?? _attendeeCacheExternal.Get<List<string>>(key);
+        //private bool JoinRoomFromCache(Guid roomId, string entityId)
+        //{
+        //    string key = roomId.ToString();
+        //    List<string> entities = _attendeeCache.Get<List<string>>(key) ?? _attendeeCacheExternal.Get<List<string>>(key);
 
-            if (entities == null)
-                entities = new List<string> { entityId };
-            else
-            {
-                if (entities.Contains(entityId))
-                    return false;
-                entities.Add(entityId);
-            }
+        //    if (entities == null)
+        //        entities = new List<string> { entityId };
+        //    else
+        //    {
+        //        if (entities.Contains(entityId))
+        //            return false;
+        //        entities.Add(entityId);
+        //    }
 
-            _attendeeCache.Set(key, entities);
-            _attendeeCacheExternal.Set(key, entities);
+        //    _attendeeCache.Set(key, entities);
+        //    _attendeeCacheExternal.Set(key, entities);
 
-            return true;
-        }
+        //    return true;
+        //}
 
         private bool JoinRoomFromDatabase(Guid roomId, string entityId)
         {
@@ -203,20 +203,20 @@ namespace Loki.SignalServer.Contrib.Messaging.Handlers
             return true;
         }
 
-        private void LeaveRoomFromCache(Guid roomId, string entityId)
-        {
-            string key = roomId.ToString();
-            List<string> entities = _attendeeCacheExternal.Get<List<string>>(key);
+        //private void LeaveRoomFromCache(Guid roomId, string entityId)
+        //{
+        //    string key = roomId.ToString();
+        //    List<string> entities = _attendeeCacheExternal.Get<List<string>>(key);
 
-            if (!entities.Any())
-                return;
+        //    if (!entities.Any())
+        //        return;
             
-            if (entities.Contains(entityId))
-                entities.RemoveAll(x => x == entityId);
+        //    if (entities.Contains(entityId))
+        //        entities.RemoveAll(x => x == entityId);
 
-            _attendeeCache.Set(key, entities);
-            _attendeeCacheExternal.Set(key, entities);
-        }
+        //    _attendeeCache.Set(key, entities);
+        //    _attendeeCacheExternal.Set(key, entities);
+        //}
 
         private void LeaveRoomFromDatabase(Guid roomId, string entityId)
         {
@@ -234,12 +234,12 @@ namespace Loki.SignalServer.Contrib.Messaging.Handlers
             }
         }
 
-        private List<string> GetActiveRoomEntitiesFromCache(Guid roomId)
-        {
-            string key = roomId.ToString();
+        //private List<string> GetActiveRoomEntitiesFromCache(Guid roomId)
+        //{
+        //    string key = roomId.ToString();
 
-            return _attendeeCache.Get<List<string>>(key) ?? _attendeeCacheExternal.Get<List<string>>(key);
-        }
+        //    return _attendeeCache.Get<List<string>>(key) ?? _attendeeCacheExternal.Get<List<string>>(key);
+        //}
 
         private List<string> GetActiveRoomEntitiesFromDatabase(Guid roomId)
         {

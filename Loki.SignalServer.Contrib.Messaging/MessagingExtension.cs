@@ -88,8 +88,8 @@ namespace Loki.SignalServer.Contrib.Messaging
 
         private void BroadcastLatestRoomAttendees(ISignal signal, Guid roomId)
         {
-            List<string> entities = _messagingHandler.GetActiveRoomEntities(roomId);
-            _router.BroadcastSignal(entities, CreateResponse(signal, new RoomAttendees { Entities = entities, RoomId = roomId }, "RoomAttendeesUpdated"));
+            //List<string> entities = _messagingHandler.GetActiveRoomEntities(roomId);
+            //_router.BroadcastSignal(entities, CreateResponse(signal, new RoomAttendees { Entities = entities, RoomId = roomId }, "RoomAttendeesUpdated"));
         }
     }
 }
