@@ -1,0 +1,14 @@
+﻿CREATE TABLE [dbo].[Rosters]
+(
+	[EntityId] NVARCHAR(50) NOT NULL, 
+    [ContactId] NVARCHAR(50) NOT NULL,
+	[RosterGroupId] INT NOT NULL,
+	[LastUpdatedUtc] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), 
+    [IsDeleted] BIT NOT NULL DEFAULT 0, 
+    CONSTRAINT [pk_Rosters_EntityId_ContactId] PRIMARY KEY CLUSTERED
+	(
+		[EntityId] ASC,
+		[ContactId] ASC
+	) WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON), 
+    CONSTRAINT [FK_Rosters_ToRosterGroups] FOREIGN KEY (RosterGroupId) REFERENCES [RosterGroups]([RosterGroupId])
+)

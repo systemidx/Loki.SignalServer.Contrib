@@ -1,0 +1,7 @@
+﻿CREATE TABLE [dbo].[Rooms]
+(
+	[RoomId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY, 
+    [IsActive] BIT NOT NULL, 
+    [TimestampCreated] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), 
+    [TimestampClosed] DATETIME2 NULL
+)

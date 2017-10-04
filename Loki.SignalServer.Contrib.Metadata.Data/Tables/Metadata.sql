@@ -1,0 +1,7 @@
+﻿CREATE TABLE [dbo].[Metadata]
+(
+	[EntityId] NVARCHAR(50) NOT NULL PRIMARY KEY, 
+	[EntityMetadata] NVARCHAR(MAX) NOT NULL,
+    [LastUpdatedUtc] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), 
+    [IsDeleted] BIT NOT NULL DEFAULT 0,
+)

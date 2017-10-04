@@ -1,0 +1,6 @@
+﻿CREATE TABLE [dbo].[RosterGroups]
+(
+	[RosterGroupId] INT NOT NULL PRIMARY KEY IDENTITY(1,1),
+	[RosterGroupName] NVARCHAR(50) NOT NULL,
+	[LastUpdatedUtc] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+)
